@@ -1,0 +1,114 @@
+enable
+configure terminal
+interface fastEthernet 0/0
+ip address 192.168.10.1 255.255.255.0
+no shutdown
+exit
+interface serial 0/3/0
+ip address 192.168.20.1 255.255.255.0
+clock rate 128000
+no shutdown
+exit
+ip dhcp excluded-address 192.168.10.1
+ip dhcp pool LAN10
+network 192.168.10.0 255.255.255.0
+default-router 192.168.10.1
+exit
+router eigrp 10
+network 192.168.10.0 255.255.255.0
+network 192.168.20.0 255.255.255.0
+exit
+exit
+copy running-config startup-config
+
+
+show ip interface brief
+
+
+
+3 mesh
+enable
+configure terminalinterface fastEthernet 0/0
+ip address 192.168.10.1 255.255.255.0
+no shutdown
+exit
+interface serial 0/3/0
+ip address 192.168.20.1 255.255.255.0
+clock rate 128000
+no shutdown
+exit
+interface serial 0/3/1
+ip address 192.168.60.1 255.255.255.0
+clock rate 128000
+no shutdown
+exit
+ip dhcp excluded-address 192.168.10.1
+ip dhcp pool LAN10
+network 192.168.10.0 255.255.255.0
+default-router 192.168.10.1
+exit
+router eigrp 10
+network 192.168.10.0 255.255.255.0
+network 192.168.20.0 255.255.255.0
+network 192.168.60.0 255.255.255.0
+exit
+exit
+copy running-config startup-config
+
+
+
+l7
+
+enable
+show ip interface brief
+Identify your three interfaces.
+Assuming they are:
+GigabitEthernet0/0
+GigabitEthernet0/1
+FastEthernet0/0
+we'll use:
+G0/0 → PC0
+G0/1 → R1
+Fa0/0 → R2
+Then enter:
+enableconfigure terminal
+interface gigabitEthernet 0/0
+ip address 192.168.1.1 255.255.255.0
+no shutdown
+exit
+interface gigabitEthernet 0/1
+ip address 192.168.10.1 255.255.255.0
+no shutdown
+exit
+interface fastEthernet 0/0
+ip address 192.168.20.1 255.255.255.0
+no shutdown
+exit
+Now DHCP for PC0:
+ip dhcp excluded-address 192.168.1.1 192.168.1.10
+ip dhcp pool LAN_R0
+network 192.168.1.0 255.255.255.0
+default-router 192.168.1.1
+exit
+Now RIP:
+router rip
+version 2
+no auto-summary
+network 192.168.1.0
+network 192.168.10.0
+network 192.168.20.0
+exit
+end
+write
+
+
+l8
+enable
+configure terminal
+router ospf 1
+network 192.168.1.0 0.0.0.255 area 0
+network 192.168.10.0 0.0.0.255 area 0
+network 192.168.20.0 0.0.0.255 area 0
+exit
+end
+write
