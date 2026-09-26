@@ -93,7 +93,7 @@ Algorithm
 Source Code
 import nltk
 from nltk.tokenize import sent_tokenize, word_tokenize
-nltk.download('punkt', quiet=True)
+nltk.download('punkt_tab', quiet=True)
 text = input("Enter a paragraph: ")
 sentences = sent_tokenize(text)
 words = word_tokenize(text)
@@ -297,7 +297,7 @@ Algorithm
 Source Code
 import nltk
 from nltk.tokenize import word_tokenize
-nltk.download('averaged_perceptron_tagger', quiet=True)
+nltk.download('averaged_perceptron_tagger_eng', quiet=True)
 text = input("Enter a sentence: ")
 words = word_tokenize(text)
 pos_tags = nltk.pos_tag(words)
@@ -512,7 +512,7 @@ Source Code
 import nltk
 from nltk.tokenize import word_tokenize
 from nltk import pos_tag, ne_chunk
-nltk.download('maxent_ne_chunker', quiet=True)
+nltk.download('maxent_ne_chunker_tab', quiet=True)
 nltk.download('words', quiet=True)
 text = input("Enter a sentence: ")
 words = word_tokenize(text)
