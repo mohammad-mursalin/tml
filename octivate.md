@@ -1,846 +1,521 @@
-# Neural Networks Sessional — Complete Theory Guide
-### ICE-4206, Pabna University of Science and Technology
 
-This document covers the **theory, equations, and concepts** for all 11 lab exercises. No code — this is for understanding the "why" behind every lab, and for viva preparation.
-
----
-
-## Lab 1: Perceptron for AND Function (Bipolar)
-
-### Concept
-
-A **perceptron** is the simplest artificial neuron. It takes multiple inputs, computes a weighted sum, and passes the result through a **step (threshold) activation function** to produce a binary decision.
-
-### Architecture
-
-```
-   x1 ──w1──┐
-             ├──► Σ (net input) ──► f(net) ──► output y
-   x2 ──w2──┘
-             │
-   bias b ───┘
-```
-
-### Equations
-
-**Net input:**
-$$
-y_{in} = \sum_{i=1}^{n} w_i x_i + b = w_1x_1 + w_2x_2 + b
-$$
-
-**Bipolar step activation function:**
-$$
-f(y_{in}) =
-\begin{cases}
-+1 & \text{if } y_{in} \geq 0 \\
--1 & \text{if } y_{in} < 0
-\end{cases}
-$$
-
-**Perceptron Learning Rule** (weight update, applied only when prediction is wrong):
-$$
-w_i(\text{new}) = w_i(\text{old}) + \eta \cdot t \cdot x_i
-$$
-$$
-b(\text{new}) = b(\text{old}) + \eta \cdot t
-$$
-
-where:
-- $\eta$ = learning rate
-- $t$ = target output
-- $x_i$ = input value
-
-### Why Bipolar (-1, +1) instead of Binary (0, 1)?
-
-In the update rule, the term $x_i$ directly scales the weight change. If $x_i = 0$ (binary "off" input), **no weight update happens at all** for that connection, even when the prediction is wrong — learning stalls for that input. With bipolar encoding, $x_i = -1$ still actively participates in learning (pushes weights in a meaningful direction).
-
-### Linear Separability
-
-AND is **linearly separable** — a single straight line can separate the (+1) output point from the (-1) points:
-
-```
-x2
- 1 |  (-1,1)        (1,1)=+1
-   |    x             o
-   |
-   |
--1 |  (-1,-1)       (1,-1)
-   |    x              x
-   +------------------------ x1
-       -1        0        1
-
-  Decision boundary: w1*x1 + w2*x2 + b = 0
-```
-
-The perceptron **converges** (weights stop changing) only when a problem is linearly separable. This is why a single perceptron **cannot** learn XOR (Minsky & Papert, 1969) — this historical limitation led to multi-layer networks.
-
-### Convergence
-
-Training stops when a full epoch (pass through all training samples) produces **zero weight updates** — the perceptron correctly classifies every example.
-
-### Key Viva Points
-- Perceptron Convergence Theorem: if data is linearly separable, the perceptron rule is *guaranteed* to converge in a finite number of steps.
-- Decision boundary equation: $w_1x_1 + w_2x_2 + b = 0$, rearranged to $x_2 = -\frac{w_1x_1+b}{w_2}$ for plotting.
-
----
-
-## Lab 2: SGD with Delta Learning Rule
-
-### Concept
-
-The **Delta Rule** (Widrow-Hoff Rule) is a generalization of the perceptron rule for **continuous-valued outputs**, minimizing the **squared error** using **gradient descent**. Unlike the perceptron's hard step function, it uses a **linear (identity) activation**.
-
-### Architecture
-
-Same single-layer structure as Lab 1, but:
-$$
-y = f(y_{in}) = y_{in} \quad \text{(linear/identity activation — no step function)}
-$$
-
-### Equations
-
-**Error for a single sample:**
-$$
-e = t - y
-$$
-
-**Loss function (squared error) that we are minimizing:**
-$$
-E = \frac{1}{2}(t - y)^2
-$$
-
-**Delta Rule weight update (derived from gradient descent on E):**
-$$
-\Delta w_i = \eta \cdot (t - y) \cdot x_i = \eta \cdot e \cdot x_i
-$$
-$$
-w_i(\text{new}) = w_i(\text{old}) + \Delta w_i
-$$
-
-**Derivation sketch (why this formula):**
-$$
-\frac{\partial E}{\partial w_i} = \frac{\partial E}{\partial y}\cdot\frac{\partial y}{\partial w_i} = -(t-y)\cdot x_i
-$$
-$$
-\Delta w_i = -\eta \frac{\partial E}{\partial w_i} = \eta(t-y)x_i
-$$
-
-**Mean Squared Error (tracked across all samples, per epoch):**
-$$
-MSE = \frac{1}{N}\sum_{k=1}^{N}(t_k - y_k)^2
-$$
-
-### SGD (Stochastic Gradient Descent)
-
-"Stochastic" = update weights **immediately after every single training sample**, rather than waiting to see the whole dataset.
-
-```
-For each epoch:
-    For each sample (x, t):      ← one at a time
-        compute y
-        compute error = t - y
-        UPDATE weights immediately
-```
-
-### Perceptron Rule vs Delta Rule — Key Difference
-
-| Aspect | Perceptron Rule | Delta Rule |
-|---|---|---|
-| Activation | Hard step function | Linear (identity) |
-| Error type | Binary (right/wrong) | Continuous (t - y) |
-| Update trigger | Only on misclassification | Every sample, proportional to error magnitude |
-| Convergence guarantee | Only if linearly separable | Converges to least-squares solution regardless |
-
-### Key Viva Points
-- Delta rule is literally **gradient descent** on the squared-error loss surface.
-- Works even for non-linearly-separable / regression-style problems, since it doesn't require a hard classification decision.
-
----
-
-## Lab 3: SGD vs Batch Gradient Descent (Delta Rule)
-
-### Concept
-
-Same Delta Rule/error equations as Lab 2. The only difference is **when weights are updated**.
-
-### Comparison Diagram
-
-```
-SGD:                                   Batch:
-sample1 → update weights               sample1 → compute gradient (store)
-sample2 → update weights               sample2 → compute gradient (store)
-sample3 → update weights               sample3 → compute gradient (store)
-sample4 → update weights               sample4 → compute gradient (store)
-   (4 updates per epoch)               → AVERAGE all gradients
-                                        → ONE update per epoch
-```
-
-### Equations
-
-**SGD update** (applied after each individual sample $k$):
-$$
-w_i \leftarrow w_i + \eta (t_k - y_k)x_{k,i}
-$$
-
-**Batch update** (applied once per epoch, after averaging over all $N$ samples):
-$$
-w_i \leftarrow w_i + \frac{\eta}{N}\sum_{k=1}^{N}(t_k - y_k)x_{k,i}
-$$
-
-### Trade-offs
-
-| Aspect | SGD | Batch |
-|---|---|---|
-| Updates per epoch | N (one per sample) | 1 |
-| Convergence speed (per epoch) | Faster | Slower |
-| Path to minimum | Noisy/zig-zag | Smooth |
-| Memory/compute per update | Low | Needs full dataset in memory |
-| Scalability to huge datasets | Good | Poor (must process everything before any update) |
-
-**Mini-batch Gradient Descent** (middle ground, common follow-up viva topic): average gradients over a small batch (e.g. 16-32 samples) instead of 1 sample or the whole dataset — balances stability and speed.
-
-### Key Viva Points
-- Both use the exact same underlying gradient formula; only the **aggregation/timing** of updates differs.
-- SGD's noisiness can actually help escape shallow local minima in more complex (non-convex) problems.
-
----
-
-## Lab 4: Digit Recognition from 5×5 Pixel Images
-
-### Concept
-
-Extending the Delta Rule to a **multi-class, multi-output** problem: recognizing which of 5 digit patterns (5×5 pixel grids) is shown, using a single-layer network with **multiple output neurons**.
-
-### Architecture
-
-```
-25 input neurons (flattened 5x5 image)
-        │  (fully connected — weight matrix 25 x 5)
-        ▼
-5 output neurons (one per digit class)
-        │
-   winner-take-all → predicted digit
-```
-
-### Equations
-
-**Flattening:** a 5×5 image $I$ becomes a 25-length vector:
-$$
-x = [I_{1,1}, I_{1,2}, ..., I_{1,5}, I_{2,1}, ..., I_{5,5}]
-$$
-
-**Bipolar conversion:** pixel value 0 → -1, pixel value 1 → +1 (same reasoning as Lab 1).
-
-**One-hot bipolar target** for class $c$ (5 classes):
-$$
-t_j = \begin{cases} +1 & j = c \\ -1 & j \neq c \end{cases}
-$$
-
-**Net input for output neuron $j$:**
-$$
-y_{in,j} = \sum_{i=1}^{25} w_{ij}x_i + b_j
-$$
-
-**Delta rule update, extended to multiple outputs** (applied for every output neuron $j$ simultaneously):
-$$
-\Delta w_{ij} = \eta (t_j - y_j)x_i
-$$
-
-This is compactly computed as an **outer product** of the input vector and the error vector:
-$$
-\Delta W = \eta \, (x \otimes e), \quad \text{where } e = t - y
-$$
-
-**Classification decision (winner-take-all):**
-$$
-\hat{c} = \arg\max_j (y_{in,j})
-$$
-
-### Why Flattening Loses Information
-
-Flattening destroys the 2D spatial relationships between pixels (e.g., "this pixel is directly above that one" is lost). This is a fundamental limitation that motivates **Convolutional Neural Networks** (Lab 5), which preserve spatial structure.
-
-### Key Viva Points
-- One-hot encoding is required whenever there are more than 2 classes and outputs aren't ordinal.
-- Noise tolerance: because weights encode a *distributed* pattern across all 25 pixels, a couple of flipped pixels usually doesn't change the argmax decision.
-
----
-
-## Lab 5: CNN for Face/Fruit/Bird Classification
-
-### Concept
-
-A **Convolutional Neural Network (CNN)** preserves 2D spatial structure by sliding small filters across the image instead of flattening it. This makes CNNs vastly more effective and efficient for image tasks.
-
-### Architecture
-
-```
-Input Image (H x W x 3)
-      │
-   [Conv2D + ReLU]   ← detect low-level features (edges, colors)
-      │
-   [MaxPooling2D]    ← downsample, keep strongest signals
-      │
-   [Conv2D + ReLU]   ← detect higher-level combinations of features
-      │
-   [MaxPooling2D]
-      │
-   [Flatten]         ← convert final feature maps to 1D vector
-      │
-   [Dense + ReLU]    ← fully-connected reasoning layer
-      │
-   [Dropout]         ← regularization (prevent overfitting)
-      │
-   [Dense + Softmax] ← final class probabilities
-```
-
-### Equations
-
-**Convolution operation** (2D, for a filter/kernel $K$ of size $m \times m$ over image $I$):
-$$
-(I * K)(x,y) = \sum_{i=0}^{m-1}\sum_{j=0}^{m-1} I(x+i, y+j)\cdot K(i,j)
-$$
-
-**Output feature map size** (no padding, stride $s$, input size $n$, filter size $f$):
-$$
-\text{Output size} = \left\lfloor \frac{n - f}{s} \right\rfloor + 1
-$$
-
-**ReLU activation** (introduces non-linearity):
-$$
-f(x) = \max(0, x)
-$$
-
-**Max Pooling** (for a 2×2 window):
-$$
-\text{pool}(x) = \max(x_{1}, x_{2}, x_{3}, x_{4})
-$$
-
-**Softmax** (final layer, converts raw scores/logits $z$ into probabilities across $K$ classes):
-$$
-\text{softmax}(z_i) = \frac{e^{z_i}}{\sum_{k=1}^{K} e^{z_k}}
-$$
-
-**Categorical Cross-Entropy Loss** (for training):
-$$
-L = -\sum_{k=1}^{K} t_k \log(\hat{y}_k)
-$$
-
-### Why Convolution Works Better Than Fully-Connected Layers for Images
-
-1. **Weight sharing**: the same filter (small set of weights) is reused across the entire image — a cat's ear is detected the same way whether it's top-left or bottom-right (**translation invariance**).
-2. **Local connectivity**: each neuron only looks at a small local region (receptive field), matching the intuition that nearby pixels are more related than distant ones.
-3. **Parameter efficiency**: far fewer weights than a fully-connected layer processing the same image, reducing overfitting risk.
-
-### Dropout (Regularization)
-
-During training, randomly "switches off" a fraction $p$ of neurons each forward pass:
-$$
-\text{Dropout}(x_i) = \begin{cases} 0 & \text{with probability } p \\ x_i / (1-p) & \text{with probability } 1-p \end{cases}
-$$
-This prevents the network from over-relying on any single neuron, improving generalization.
-
-### Key Viva Points
-- Filters/kernels are **learned**, not hand-designed — backpropagation trains them just like any other weight.
-- Pooling provides slight translation invariance and reduces computation.
-- Overfitting is diagnosed by a growing gap between training accuracy and validation accuracy.
-
----
-
-## Lab 6: Backpropagation on a 3-Layer ANN
-
-### Concept
-
-**Backpropagation** trains multi-layer networks by computing how much each weight contributed to the final error, using the **chain rule of calculus**, and propagating this error information **backward** from output to input.
-
-### Given Network (from exam diagram)
-
-```
-x1=0.05 ──w1=0.15──┐         ┌──w5=0.40──┐
-                     ├──►[H1]──┤            ├──►[y1]  target=0.01
-x1 ──w3=0.25──┐      │         w6=0.45──┐  │
-               ├──►[H2]         w7=0.50─┼──┴──►[y2]  target=0.99
-x2=0.10──w2=0.20┘     w8=0.55──┘
-        ──w4=0.30─┘
-
-bias b1=0.35 → added to H1, H2
-bias b2=0.60 → added to y1, y2
-Activation: sigmoid throughout
-```
-
-### Step 1 — Forward Pass Equations
-
-**Hidden layer:**
-$$
-net_{h1} = w_1x_1 + w_2x_2 + b_1, \qquad out_{h1} = \sigma(net_{h1})
-$$
-$$
-net_{h2} = w_3x_1 + w_4x_2 + b_1, \qquad out_{h2} = \sigma(net_{h2})
-$$
-
-**Output layer:**
-$$
-net_{o1} = w_5 \cdot out_{h1} + w_6 \cdot out_{h2} + b_2, \qquad out_{o1} = \sigma(net_{o1})
-$$
-$$
-net_{o2} = w_7 \cdot out_{h1} + w_8 \cdot out_{h2} + b_2, \qquad out_{o2} = \sigma(net_{o2})
-$$
-
-**Sigmoid activation function:**
-$$
-\sigma(x) = \frac{1}{1+e^{-x}}
-$$
-
-**Sigmoid derivative (key property — reuses the forward-pass output):**
-$$
-\sigma'(x) = \sigma(x)\big(1-\sigma(x)\big)
-$$
-
-### Step 2 — Total Error
-
-$$
-E_{total} = \sum E_k = \frac{1}{2}(T_1 - out_{o1})^2 + \frac{1}{2}(T_2 - out_{o2})^2
-$$
-
-### Step 3 — Backward Pass: Output Layer Weights ($w_5, w_6, w_7, w_8$)
-
-Using the chain rule for $w_5$:
-$$
-\frac{\partial E_{total}}{\partial w_5} = \frac{\partial E_{total}}{\partial out_{o1}} \cdot \frac{\partial out_{o1}}{\partial net_{o1}} \cdot \frac{\partial net_{o1}}{\partial w_5}
-$$
-
-Each term:
-$$
-\frac{\partial E_{total}}{\partial out_{o1}} = -(T_1 - out_{o1})
-$$
-$$
-\frac{\partial out_{o1}}{\partial net_{o1}} = out_{o1}(1-out_{o1})
-$$
-$$
-\frac{\partial net_{o1}}{\partial w_5} = out_{h1}
-$$
-
-Define $\delta_{o1}$ (the "delta"/local gradient for output neuron 1):
-$$
-\delta_{o1} = -(T_1 - out_{o1})\cdot out_{o1}(1-out_{o1})
-$$
-$$
-\frac{\partial E_{total}}{\partial w_5} = \delta_{o1} \cdot out_{h1}
-$$
-
-(Same pattern applies to $w_6, w_7, w_8$, using $\delta_{o1}, \delta_{o2}$ appropriately.)
-
-### Step 4 — Backward Pass: Hidden Layer Weights ($w_1, w_2, w_3, w_4$)
-
-**This is the essence of "back"-propagation.** Since $out_{h1}$ feeds into **both** $o1$ and $o2$, its error contribution must sum both paths:
-$$
-\frac{\partial E_{total}}{\partial out_{h1}} = \delta_{o1}\cdot w_5 + \delta_{o2}\cdot w_7
-$$
-$$
-\delta_{h1} = \left(\delta_{o1}w_5 + \delta_{o2}w_7\right)\cdot out_{h1}(1-out_{h1})
-$$
-$$
-\frac{\partial E_{total}}{\partial w_1} = \delta_{h1}\cdot x_1
-$$
-
-### Step 5 — Gradient Descent Weight Update
-
-$$
-w(\text{new}) = w(\text{old}) - \eta\cdot\frac{\partial E_{total}}{\partial w}
-$$
-
-### Summary Diagram — Direction of Information Flow
-
-```
-FORWARD PASS:   x1,x2 ──► hidden (H1,H2) ──► output (y1,y2) ──► Error
-                   (compute activations left to right)
-
-BACKWARD PASS:  δ_o1,δ_o2 ──► δ_h1,δ_h2 ──► gradients for w1..w4
-                   (compute deltas right to left, using chain rule)
-```
-
-### Key Viva Points
-- Backprop = repeated, systematic application of the **chain rule**.
-- The "delta" ($\delta$) at each neuron is reused — it's computed once and used for every weight feeding into that neuron, which is what makes backprop efficient.
-- **Vanishing gradient problem**: sigmoid's derivative is always $\leq 0.25$; in deep networks, multiplying many such small numbers together (chain rule across many layers) makes early-layer gradients shrink toward zero, slowing learning. This motivates ReLU in modern deep networks.
-
----
-
-## Lab 7: Transfer Learning with ResNet-50
-
-### Concept
-
-**Transfer learning** reuses a network already trained on a huge dataset (ImageNet: 1.4 million images, 1000 classes) and adapts it to a new, smaller task — instead of training a new CNN from scratch.
-
-### Architecture
-
-```
-┌─────────────────────────────────────┐
-│   ResNet-50 Convolutional Base       │   ← PRETRAINED, FROZEN
-│   (already knows edges, textures,    │     (weights unchanged
-│    shapes, object parts...)          │      during initial training)
-└─────────────────────────────────────┘
-              │
-      [GlobalAveragePooling2D]          ← condense feature maps
-              │
-      [Dense(128, relu)]                ← NEW, trainable
-              │
-      [Dropout]
-              │
-      [Dense(num_classes, softmax)]     ← NEW, trainable
-```
-
-### Two-Phase Training Strategy
-
-**Phase 1 — Feature extraction (base frozen):**
-$$
-\theta_{base} \text{ frozen (no gradient updates)}, \quad \text{only } \theta_{head} \text{ updated}
-$$
-Only the small new head (a few hundred thousand parameters) is trained — fast, and safe even with a small dataset.
-
-**Phase 2 — Fine-tuning (unfreeze last few layers):**
-$$
-\theta_{base}^{(last\ k\ layers)} \text{ unfrozen}, \quad \eta_{fine-tune} \ll \eta_{initial}
-$$
-A **very small learning rate** is used to gently adapt the highest-level pretrained features without destroying previously learned knowledge (avoiding "catastrophic forgetting").
-
-### Why Freeze Layers?
-
-- Early CNN layers learn **generic** features (edges, colors, simple textures) — useful for almost any visual task.
-- Later CNN layers learn **task-specific** features (closer to whole-object recognition) — these benefit most from fine-tuning.
-- Freezing prevents a small new dataset from "overwriting" millions of images' worth of learned knowledge.
-
-### Global Average Pooling vs Flatten
-
-$$
-\text{GAP}(\text{feature map}) = \frac{1}{H\times W}\sum_{i=1}^{H}\sum_{j=1}^{W} F(i,j)
-$$
-
-GAP collapses each entire feature map to a single average number — drastically fewer parameters than `Flatten()`, reducing overfitting risk.
-
-### Key Viva Points
-- Transfer learning is most beneficial when your own dataset is small.
-- `include_top=False` removes the original 1000-class ImageNet classification head, since we need a different number of output classes.
-- Fine-tuning learning rate must be much smaller than normal training LR to avoid destructive updates.
-
----
-
-## Lab 8: GAN for Generating Handwritten Digits (MNIST)
-
-### Concept
-
-A **Generative Adversarial Network (GAN)** consists of two networks trained in competition:
-- **Generator (G)**: creates fake images from random noise, trying to fool the Discriminator.
-- **Discriminator (D)**: classifies images as real or fake, trying to catch the Generator's fakes.
-
-### Architecture
-
-```
-Random noise z (latent vector, e.g. 100 numbers)
-        │
-   [Generator G]
-        │
-   Fake image ──┐
-                 ├──► [Discriminator D] ──► P(real) ∈ [0,1]
-   Real image ──┘
-   (from MNIST)
-```
-
-### The Minimax Game (Core Equation)
-
-GANs are formally trained by solving:
-$$
-\min_G \max_D \; V(D,G) = \mathbb{E}_{x\sim p_{data}}[\log D(x)] + \mathbb{E}_{z\sim p_z}[\log(1-D(G(z)))]
-$$
-
-- $D$ tries to **maximize** this — correctly identify real ($D(x)\to1$) and fake ($D(G(z))\to0$).
-- $G$ tries to **minimize** this — make $D(G(z))\to1$ (fool the discriminator).
-
-### Practical Loss Functions (Binary Cross-Entropy based)
-
-**Discriminator loss:**
-$$
-L_D = -\Big[\log D(x_{real}) + \log(1-D(G(z)))\Big]
-$$
-
-**Generator loss** (non-saturating version, commonly used in practice):
-$$
-L_G = -\log D(G(z))
-$$
-(i.e., Generator is rewarded when the Discriminator mistakenly outputs a high probability of "real" for a fake image.)
-
-### Training Loop Diagram
-
-```
-for each training step:
-    1. Sample noise z, generate fake images: G(z)
-    2. Get D's prediction on real images AND fake images
-    3. Compute L_D → update ONLY Discriminator's weights
-    4. Compute L_G → update ONLY Generator's weights
-    (two SEPARATE gradient computations, two separate optimizers)
-```
-
-### Key Architectural Notes
-
-- **Conv2DTranspose** ("deconvolution"): the reverse of Conv2D — it *increases* spatial dimensions (e.g., 7×7 → 14×14 → 28×28), used in the Generator to grow noise into a full image.
-- **tanh** output activation in Generator → outputs range [-1, 1]; real images must be scaled to match.
-- **LeakyReLU** (instead of plain ReLU) is preferred in GANs to keep gradients flowing even for negative inputs:
-$$
-\text{LeakyReLU}(x) = \begin{cases} x & x > 0 \\ \alpha x & x \leq 0 \end{cases} \quad (\alpha \approx 0.2)
-$$
-
-### Why Loss Oscillates (Not Monotonically Decreasing)
-
-Because it's a two-player adversarial game (not a single optimization), improvement by one network makes the other's task harder, and vice-versa. Oscillation is **expected, normal GAN behavior** — success is judged by the visual quality/diversity of generated samples, not by loss reaching zero.
-
-### Key Viva Points
-- **Mode collapse**: Generator finds one output that reliably fools D and stops producing diverse outputs — a known failure mode.
-- GANs are evaluated via visual inspection or metrics like FID (Fréchet Inception Distance), not simple accuracy.
-
----
-
-## Lab 9: Speech Recognition (Numbers 1-4) using ANN
-
-### Concept
-
-Raw audio (thousands of samples/second) is too high-dimensional and position-sensitive to feed directly into an ANN. **Feature extraction** compresses audio into a compact, meaningful representation first.
-
-### Pipeline Diagram
-
-```
-Raw audio waveform (1D signal, e.g. 16000 samples/sec)
-        │
-  [MFCC Feature Extraction]
-        │
-  MFCC matrix (13 coefficients x T time-frames)
-        │
-  [Average across time frames]
-        │
-  Fixed-length feature vector (13 numbers)
-        │
-  [ANN: Dense → Dense → Softmax]
-        │
-  Predicted class (one, two, three, four)
-```
-
-### MFCC (Mel-Frequency Cepstral Coefficients) — Conceptual Steps
-
-1. **Framing**: split audio into short overlapping time windows (e.g., 25ms).
-2. **FFT (Fast Fourier Transform)**: convert each frame from time domain to frequency domain.
-$$
-X(k) = \sum_{n=0}^{N-1} x(n) e^{-i2\pi kn/N}
-$$
-3. **Mel filterbank**: warp the frequency axis onto the **Mel scale**, which mimics human pitch perception (more sensitive at low frequencies, less at high):
-$$
-m = 2595 \log_{10}\left(1 + \frac{f}{700}\right)
-$$
-4. **Log**: take the log of the filterbank energies (mimics human perception of loudness).
-5. **DCT (Discrete Cosine Transform)**: decorrelates the log energies, compressing them into a small number of coefficients (typically 13).
-
-### Why Average Across Time?
-
-Different audio clips have different durations → different numbers of time frames. Averaging collapses this variable-length matrix into one **fixed-size vector**, which a standard ANN requires (no variable input size).
-$$
-\bar{x}_i = \frac{1}{T}\sum_{t=1}^{T} MFCC_{i,t}, \quad i = 1, ..., 13
-$$
-
-### ANN Classifier
-
-Standard feedforward network (same math as earlier labs):
-$$
-h = \text{ReLU}(W_1 x + b_1), \qquad \hat{y} = \text{softmax}(W_2 h + b_2)
-$$
-
-### Key Viva Points
-- MFCC is the industry-standard feature for classical speech recognition (pre-deep-learning-era and still widely used).
-- Averaging discards temporal ordering information — for tasks needing that (continuous speech, longer sentences), RNNs/LSTMs/Transformers that process sequences natively are preferred over simple averaging + ANN.
-
----
-
-## Lab 10: SVM for Purchase Classification Prediction
-
-### Concept
-
-A **Support Vector Machine (SVM)** finds the decision boundary (hyperplane) that **maximizes the margin** — the distance between the boundary and the nearest points of each class — rather than just any separating line.
-
-### Architecture / Geometric Diagram
-
-```
-        margin        margin
-          │              │
-   o   o  │      ○       │   x   x
-      o   │   ○     ○    │  x   x
-    o     │  ○   ○       │    x
-──────────┼──────────────┼────────── decision boundary
-          │  (support     │
-          │   vectors      │
-          │   circled)     │
-```
-Points closest to the boundary (circled) are the **support vectors** — only these determine the boundary; all other points could be removed without changing it.
-
-### Equations
-
-**Decision hyperplane:**
-$$
-w \cdot x + b = 0
-$$
-
-**Classification rule:**
-$$
-\hat{y} = \text{sign}(w\cdot x + b)
-$$
-
-**Margin width** (distance between the two parallel margin boundaries):
-$$
-\text{margin} = \frac{2}{\|w\|}
-$$
-
-**SVM Optimization Objective** (hard margin, linearly separable case):
-$$
-\min_{w,b} \frac{1}{2}\|w\|^2 \quad \text{subject to} \quad t_i(w\cdot x_i + b) \geq 1 \; \forall i
-$$
-
-**Soft margin** (allowing some misclassification, via slack variables $\xi_i$):
-$$
-\min_{w,b,\xi} \frac{1}{2}\|w\|^2 + C\sum_{i=1}^{n}\xi_i \quad \text{subject to} \quad t_i(w\cdot x_i+b)\geq 1-\xi_i,\; \xi_i\geq 0
-$$
-
-- **C parameter**: controls the trade-off. Small C → prioritize wide margin, tolerate more misclassification (softer boundary). Large C → penalize misclassification heavily, narrower/more complex boundary (risk of overfitting).
-
-### The Kernel Trick
-
-When data isn't linearly separable, SVM implicitly maps inputs into a higher-dimensional space via a **kernel function** $K(x_i, x_j)$, without ever explicitly computing the transformation:
-
-**Linear kernel:**
-$$
-K(x_i, x_j) = x_i \cdot x_j
-$$
-
-**RBF (Gaussian) kernel** (most common for non-linear boundaries):
-$$
-K(x_i, x_j) = \exp\left(-\gamma \|x_i - x_j\|^2\right)
-$$
-- **gamma (γ)**: controls how far a single training point's influence reaches. Small γ → smooth/simple boundary. Large γ → tight, wiggly boundary (risk of overfitting).
-
-**Polynomial kernel:**
-$$
-K(x_i, x_j) = (x_i \cdot x_j + c)^d
-$$
-
-### Why Feature Scaling Matters
-
-SVM's decision boundary is based on **geometric distance**. A feature with a much larger numeric range (e.g., Salary: 15,000–150,000) would dominate the distance calculation over a smaller-range feature (e.g., Age: 18–60) unless both are standardized:
-$$
-x_{scaled} = \frac{x - \mu}{\sigma}
-$$
-
-### Key Viva Points
-- Support vectors are the *only* points that matter for the final boundary.
-- Confusion Matrix terms: True Positive, True Negative, False Positive, False Negative — used to compute precision, recall, F1-score, accuracy.
-$$
-\text{Accuracy} = \frac{TP+TN}{TP+TN+FP+FN}, \quad \text{Precision} = \frac{TP}{TP+FP}, \quad \text{Recall} = \frac{TP}{TP+FN}
-$$
-
----
-
-## Lab 11: PCA for Dimensionality Reduction
-
-### Concept
-
-**Principal Component Analysis (PCA)** is an **unsupervised** technique that finds new axes (principal components) capturing the maximum variance in the data, allowing high-dimensional data to be represented with fewer dimensions while retaining most of its information.
-
-### Conceptual Diagram
-
-```
-Original 2D data (correlated features):        After PCA rotation:
-
-    x2                                            PC2
-    │      ●                                        │
-    │    ●   ●                                       │  ●
-    │  ●   ●   ●        ──────►                      │●   ●
-    │    ●   ●                                  ─────┼──────● PC1
-    │  ●   ●                                         │  ●
-    └──────────── x1                                 │
-                                            (PC1 = direction of max variance,
-                                             PC2 = perpendicular, 2nd-most variance)
-```
-
-### Steps and Equations
-
-**Step 1 — Standardize the data:**
-$$
-x_{scaled} = \frac{x-\mu}{\sigma}
-$$
-
-**Step 2 — Compute the covariance matrix** (for $d$ features):
-$$
-\Sigma = \frac{1}{n-1}X^TX \quad (\text{after centering } X)
-$$
-
-**Step 3 — Eigen-decomposition:**
-$$
-\Sigma v_i = \lambda_i v_i
-$$
-- $v_i$ = eigenvector = direction of the $i$-th principal component.
-- $\lambda_i$ = eigenvalue = amount of variance captured along that direction.
-
-**Step 4 — Sort eigenvectors by eigenvalue (descending)** and select the top $k$ to form the projection matrix $W = [v_1, v_2, ..., v_k]$.
-
-**Step 5 — Project data onto the new, lower-dimensional space:**
-$$
-X_{reduced} = X_{scaled} \cdot W
-$$
-
-### Explained Variance Ratio
-
-$$
-\text{explained variance ratio of PC}_i = \frac{\lambda_i}{\sum_{j=1}^{d}\lambda_j}
-$$
-
-**Cumulative explained variance** (used to decide how many components to keep — e.g., keep enough to cross 95%):
-$$
-\text{cumulative}(k) = \sum_{i=1}^{k}\frac{\lambda_i}{\sum_{j=1}^{d}\lambda_j}
-$$
-
-### Scree Plot (conceptual)
-
-```
-Variance
-Explained │██
-    100%  │██
-          │██  ██
-          │██  ██
-          │██  ██  ▓▓
-          │██  ██  ▓▓  ░░
-          └────────────────
-            PC1 PC2 PC3 PC4
-   (keep components up to where the curve "elbows"/flattens)
-```
-
-### Why Standardize Before PCA?
-
-PCA maximizes **variance**, and variance is scale-dependent. A feature measured in larger raw numbers (e.g., salary) would appear artificially "more important"/high-variance than one measured in small numbers (e.g., age) unless both are standardized first — same underlying reasoning as SVM.
-
-### Key Viva Points
-- PCA is **unsupervised** — it never uses class labels, only feature values.
-- Principal components are always **orthogonal** (uncorrelated) to each other by construction — this ensures no redundant information between components.
-- **Loadings** (the eigenvector values) tell you how much each *original* feature contributes to a given principal component — useful for interpreting what a component "means."
-- PCA is commonly used as a **preprocessing step** before other ML algorithms to reduce noise, computation time, and overfitting risk (the "curse of dimensionality").
-
----
-
-## Quick Cross-Lab Comparison Table
-
-| Lab | Algorithm Type | Learning Paradigm | Key Equation |
-|---|---|---|---|
-| 1 | Perceptron | Supervised, binary classification | $w=w+\eta t x$ |
-| 2 | Delta Rule (SGD) | Supervised, regression-style | $w=w+\eta(t-y)x$ |
-| 3 | Delta Rule (Batch) | Supervised | Averaged gradient update |
-| 4 | Multi-output Delta Rule | Supervised, multi-class | Outer product update |
-| 5 | CNN | Supervised, deep learning | Convolution + Cross-entropy |
-| 6 | Backpropagation | Supervised, deep learning | Chain rule gradients |
-| 7 | Transfer Learning | Supervised, deep learning | Frozen weights + fine-tuning |
-| 8 | GAN | Unsupervised/self-supervised, adversarial | Minimax game |
-| 9 | ANN + MFCC | Supervised, deep learning | Feature extraction + Dense layers |
-| 10 | SVM | Supervised, classical ML | Margin maximization |
-| 11 | PCA | Unsupervised, classical ML | Eigen-decomposition |
+Experiment 1: Write a Python program to convert a given text to lowercase
+and remove all punctuation.
+Objectives
+ To understand the need for text cleaning as a pre-processing step in NLP.
+ To learn how to convert text to a uniform case and remove punctuation using Python.
+Theory
+Text cleaning (also called text normalization) is usually the very first step of any NLP pipeline. Raw text
+collected from documents, social media posts, or web pages is messy: it contains mixed letter casing,
+punctuation marks, extra symbols, and other artifacts that do not carry useful meaning for most language-
+processing tasks. If this noise is not removed, a computer will treat words that are semantically identical
+as completely different tokens, which hurts the accuracy of almost every later step (tokenization,
+frequency counting, model training, and so on).
+One common source of noise is inconsistent capitalization. To a computer, the strings “Word”, “word”,
+and “WORD” are three distinct sequences of characters, even though a human reader understands them
+as the same word. Converting everything to lowercase using Python's str.lower() method solves this by
+forcing every character in the text to a single, uniform case, so that “NLP” and “nlp” are now treated
+identically.
+The second source of noise is punctuation. Marks such as commas, periods, exclamation points, and
+quotation marks are essential for human readability but are often irrelevant (and sometimes harmful) for
+tasks like word-frequency counting or keyword extraction, because “processing” and “processing.” would
+otherwise be counted as two different words. Python's built-in string module exposes a ready-made
+constant, string.punctuation, containing all standard punctuation characters (e.g., !"#$%&'()*+,-./:;<=>?
+@[\]^_`{|}~). The expression str.maketrans('', '', string.punctuation) builds a translation table that maps
+every punctuation character to nothing, and str.translate() then applies that table to strip all punctuation
+from the text in a single, efficient pass.
+For example, the sentence “Hello, World! This is Natural Language Processing.” contains a comma, an
+exclamation mark, and a full stop, and mixes uppercase and lowercase letters. After lowercasing and
+punctuation removal, it becomes the clean, uniform string “hello world this is natural language
+processing”, which is far easier for subsequent NLP steps (such as tokenization) to work with
+consistently.
+As a second example, “Can’t stop, won’t stop! #NLP101” becomes “cant stop wont stop nlp101” after the
+same two steps — note that apostrophes are also punctuation, so contractions lose their apostrophe as
+well, which is an important side-effect to keep in mind when this technique is applied to informal text
+such as tweets.
+
+Algorithm
+1. Start.
+2. Take the input text.
+3. Convert the entire text to lowercase using lower().
+4. Create a translation table that maps every punctuation character to None using str.maketrans('', '',
+string.punctuation).
+5. Apply the translation table to the text using translate() to remove punctuation.
+6. Print/display the cleaned text.
+7. Stop.
+
+Source Code
+import string
+text = input("Enter text: ")
+cleaned = text.lower().translate(str.maketrans('', '', string.punctuation))
+print(cleaned)
+
+Experiment 2: Write a Python program to tokenize a paragraph into
+sentences and words using NLTK.
+Objectives
+ To understand the concept of tokenization in NLP.
+ To learn how to split a paragraph into sentences and words using NLTK.
+Theory
+Tokenization is the process of breaking down a large piece of text into smaller, meaningful units called
+tokens. Depending on the level of granularity required, tokens can be whole sentences (sentence
+tokenization) or individual words and punctuation marks (word tokenization). It is one of the very first and
+most fundamental steps in an NLP pipeline, because nearly every downstream task — stopword removal,
+stemming, POS tagging, frequency analysis, and so on — operates on individual tokens rather than on one
+long, unstructured string of text.
+Sentence tokenization looks deceptively simple (“just split on periods”), but a naive approach fails on
+abbreviations like “Mr.”, “e.g.”, or decimal numbers like “3.14”, where a period does not actually mark
+the end of a sentence. NLTK's sent_tokenize() function avoids this problem by using a pre-trained,
+unsupervised model called “punkt”, which has learned statistically where sentence boundaries are likely
+to occur in a given language, rather than relying on a single fixed rule.
+Word tokenization, performed by word_tokenize(), splits a sentence into its individual words and
+separates out punctuation marks as their own tokens. For instance, the sentence “It is very interesting!”
+is split into the tokens ['It', 'is', 'very', 'interesting', '!'] — notice that the exclamation mark becomes a
+separate token rather than staying attached to “interesting”. This separation is important because it lets
+later steps (like stopword removal or POS tagging) treat words and punctuation independently.
+Applying both functions to the paragraph “Hello world. This is an NLP course. It is very interesting!” first
+splits it into three sentences at the sentence level, and then, when word_tokenize() is applied to the whole
+text, further breaks it down into the individual words and punctuation symbols that make up those
+sentences.
+As a further example, sent_tokenize() correctly keeps “Dr. Smith arrived at 5 p.m. He was late.” as two
+sentences rather than four, because “punkt” recognises “Dr.” and “p.m.” as abbreviations and not as
+sentence-ending periods — something a naive split('.') approach would get wrong.
+
+Algorithm
+1.Start.
+2.Import sent_tokenize and word_tokenize from nltk.tokenize.
+3.Download the punkt tokenizer resource.
+4.Take the input paragraph.
+5.Apply sent_tokenize() to split the paragraph into a list of sentences.
+6.Apply word_tokenize() to split the paragraph into a list of words and punctuation.
+7.Print the sentences and words.
+8.Stop.
+
+Source Code
+import nltk
+from nltk.tokenize import sent_tokenize, word_tokenize
+nltk.download('punkt', quiet=True)
+text = input("Enter a paragraph: ")
+sentences = sent_tokenize(text)
+words = word_tokenize(text)
+print("Sentences:", sentences)
+print("Words:", words)
+
+Experiment 3: Write a Python program to remove English stopwords from
+tokenized words using NLTK.
+Objectives
+ To understand what stopwords are and why they are removed in NLP.
+ To learn how to filter out English stopwords from tokenized text using NLTK.
+Theory
+Stopwords are extremely common words in a language — such as “is”, “a”, “the”, “in”, “for”, and “of” —
+that occur very frequently in almost every sentence but usually carry little meaningful or discriminative
+information on their own. For example, in the sentence “This is a simple sentence for removing
+stopwords”, words like “this”, “is”, “a”, and “for” appear so often across all kinds of text that they do very
+little to distinguish what the sentence is actually about, whereas words like “simple”, “sentence”, and
+“stopwords” carry the real content.
+In tasks such as text classification, search/information retrieval, or topic modeling, keeping stopwords
+adds noise and unnecessarily increases the size of the vocabulary and the data being processed, without
+adding much useful signal. Removing them lets the model or algorithm focus its attention on the content-
+bearing words that actually differentiate one piece of text from another, and also reduces memory and
+computation requirements.
+NLTK ships with a predefined, curated list of stopwords for many languages through its stopwords corpus.
+In Python, stopwords.words('english') returns this list, which is then usually converted into a set (rather
+than a list) because membership checking (x in set) is much faster in a set than in a list, which matters
+when filtering large amounts of text. After tokenizing the input into individual words, each token's
+lowercase form is checked against this stopword set, and only the tokens that are NOT present in the set
+are retained in the final, filtered output.
+For example, tokenizing “This is a simple sentence for removing stopwords in NLP.” and removing
+stopwords leaves behind only ['simple', 'sentence', 'removing', 'stopwords', 'NLP', '.'] — the common
+connective and functional words have been stripped away, while the content words remain (note that
+punctuation is not a stopword, so it is not removed by this step).
+A second example shows why case-folding matters here: the sentence “The Cat And The Dog Are Friends.”
+would NOT have “The” and “And” removed if we forgot to lowercase each token first, since the stopword
+set only contains lowercase entries like “the” and “and” — this is exactly why the filtering condition checks
+w.lower() rather than w.
+
+Algorithm
+1.Start.
+2.Import word_tokenize and the stopwords corpus from NLTK.
+3.Download the stopwords resource.
+4.Take the input text and tokenize it into words.
+5.Load the set of English stopwords.
+6.Iterate through the tokenized words and keep only those whose lowercase form is not in the
+stopword set.
+7.Print the filtered list of words.
+8.Stop.
+
+Source Code
+import nltk
+from nltk.corpus import stopwords
+from nltk.tokenize import word_tokenize
+nltk.download('stopwords', quiet=True)
+text = input("Enter text: ")
+words = word_tokenize(text)
+stop_words = set(stopwords.words('english'))
+filtered = [w for w in words if w.lower() not in stop_words]
+print(filtered)
+
+Experiment 4: Write a Python program to apply stemming to words using
+NLTK’s PorterStemmer.
+Objectives
+ To understand the concept of stemming and its role in text normalization.
+ To learn how to apply NLTK's PorterStemmer to reduce words to their root form.
+Theory
+Stemming is a text-normalization technique that reduces a word to its base or root form, called the stem,
+typically by chopping off common suffixes such as “-ing”, “-ed”, “-es”, or “-ly”. The underlying idea is that
+words like “run”, “running”, “runs”, and “runner” all revolve around the same core concept, so treating
+them as one common stem, rather than as four unrelated tokens, reduces vocabulary size and helps text-
+analysis algorithms recognize that these words are related.
+Stemming algorithms are rule-based and heuristic rather than dictionary-based — they blindly apply a
+fixed sequence of suffix-stripping rules without truly understanding grammar or meaning. Because of this,
+the resulting “stem” is often not a valid, complete dictionary word. For example, the Porter algorithm
+reduces “quickly” to “quickli” and “jumping” to “jump” — the second result happens to be a real word,
+but the first is not, simply because the algorithm mechanically strips the “-ly” and does not know that the
+correct English adverb root should keep its “y”.
+NLTK's PorterStemmer class implements the Porter stemming algorithm, one of the oldest and most
+widely used stemmers for English, published by Martin Porter in 1980. It works by applying a series of
+measured, ordered rules (organized into multiple steps) that progressively strip common suffixes from a
+word, checking conditions such as the number of vowel-consonant sequences in the remaining stem
+before each rule is applied, to avoid over-stemming very short words.
+For instance, stemming the sentence “The cats are running and jumping quickly.” produces ['the', 'cat',
+'are', 'run', 'and', 'jump', 'quickli', '.'] — notice that “cats” becomes “cat”, “running” becomes “run”, and
+“jumping” becomes “jump” correctly, while “quickly” is over-stemmed into the non-word “quickli”,
+illustrating both the usefulness and the crude, rule-based limitation of stemming.
+As another example, ps.stem(“studies”) returns “studi” and ps.stem(“studying”) also returns “studi” —
+two words that are grammatically different are correctly collapsed to the same stem, even though “studi”
+itself is not a real English word.
+
+Algorithm
+1.Start.
+2.Import PorterStemmer from nltk.stem and word_tokenize from nltk.tokenize.
+3.Create an object of PorterStemmer.
+4.Take the input text and tokenize it into words.
+5.Apply the stem() method of PorterStemmer to each tokenized word.
+6.Collect the stemmed words into a list.
+7.Print the list of stemmed words.
+8.Stop.
+Source Code
+import nltk
+from nltk.stem import PorterStemmer
+from nltk.tokenize import word_tokenize
+nltk.download('punkt', quiet=True)
+ps = PorterStemmer()
+text = input("Enter text: ")
+words = word_tokenize(text)
+stemmed = [ps.stem(w) for w in words]
+print(stemmed)
+
+Experiment 5: Write a Python program to apply lemmatization to words
+using NLTK’s WordNetLemmatizer.
+Objectives
+ To understand the concept of lemmatization and how it differs from stemming.
+ To learn how to apply NLTK's WordNetLemmatizer to obtain the dictionary form of words.
+Theory
+Lemmatization, like stemming, aims to reduce a word to a single base form so that related word variants
+are treated as one, but it does so in a fundamentally different, more linguistically informed way. Instead
+of mechanically chopping off suffixes with fixed rules, lemmatization uses a vocabulary and detailed
+morphological analysis to look up the word's dictionary base form, called its lemma. As a result,
+lemmatization always returns a real, valid word, whereas stemming can produce invalid forms such as
+“quickli”.
+NLTK's WordNetLemmatizer relies on WordNet, a large lexical database of English that groups words into
+sets of synonyms and records relationships between different inflected forms of a word (e.g., “is”, “was”,
+“be” are all forms of the lemma “be”). Given a word, the lemmatizer looks it up in WordNet and returns
+its canonical dictionary form.
+A crucial detail is that the correct lemma of a word often depends on its part of speech (POS) — for
+example, the word “running” lemmatizes differently depending on whether it is used as a verb (“run”) or
+a noun (as in “running is good exercise”). By default, WordNetLemmatizer.lemmatize() assumes every
+word is a noun unless told otherwise via a pos argument. This is why, without explicitly supplying POS
+tags, verbs like “running” and “jumping” are NOT reduced to “run” and “jump” — they are left almost
+unchanged because they are not recognized as nouns needing simplification, while a genuinely plural
+noun like “cats” IS correctly reduced to “cat”.
+Applying the default (noun-assuming) lemmatizer to “The cats are running and jumping quickly.”
+therefore produces ['The', 'cat', 'are', 'running', 'and', 'jumping', 'quickly', '.'] — only “cats” changes to
+“cat”, while “running”, “jumping”, and “quickly” remain untouched, in contrast to stemming, which
+aggressively modified almost every word in the same sentence.
+If the correct POS tag is supplied instead — for example, lemmatizer.lemmatize(“running”, pos='v') — the
+result correctly becomes “run”, which shows that lemmatization is more accurate than stemming only
+when it is given enough grammatical context; without it, it can under-normalize verbs and adverbs exactly
+as seen above.
+
+Algorithm
+1.Start.
+2.Import WordNetLemmatizer from nltk.stem and word_tokenize from nltk.tokenize.
+3.Create an object of WordNetLemmatizer.
+4.Take the input text and tokenize it into words.
+5.Apply the lemmatize() method of WordNetLemmatizer to each tokenized word.
+6.Collect the lemmatized words into a list.
+7.Print the list of lemmatized words.
+8.Stop.
+
+Source Code
+import nltk
+from nltk.stem import WordNetLemmatizer
+from nltk.tokenize import word_tokenize
+nltk.download('wordnet', quiet=True)
+lemmatizer = WordNetLemmatizer()
+text = input("Enter text: ")
+words = word_tokenize(text)
+lemmatized = [lemmatizer.lemmatize(w) for w in words]
+print(lemmatized)
+
+Experiment 6: Write a Python program to perform Part-of-Speech (POS)
+tagging on a sentence using NLTK.
+Objectives
+ To understand the concept of Part-of-Speech (POS) tagging.
+ To learn how to assign grammatical tags to words in a sentence using NLTK.
+Theory
+Part-of-Speech (POS) tagging is the process of assigning a grammatical category — such as noun, verb,
+adjective, adverb, or determiner — to each word (token) in a sentence, based on both its definition and
+the context in which it appears. Context matters because many English words can act as different parts of
+speech depending on how they are used; for example, “run” can be a verb (“I run every day”) or a noun
+(“I went for a run”), and a good POS tagger must use surrounding words to disambiguate correctly.
+POS tags reveal the underlying grammatical structure of a sentence, which is why POS tagging is a
+foundational building block for many higher-level NLP applications, including syntactic parsing,
+information extraction, question answering, and — as seen later in this report — named entity
+recognition, since entities are usually built from sequences of proper nouns. NLTK's pos_tag() function
+assigns each token a tag from the Penn Treebank tagset using a pre-trained “averaged perceptron” tagger,
+a statistical model trained on large amounts of human-annotated text. Some of the most common tags
+are: DT (determiner, e.g., “the”), JJ (adjective, e.g., “quick”), NN (singular noun, e.g., “fox”), VBZ (verb,
+third-person singular present, e.g., “jumps”), and IN (preposition, e.g., “over”).
+For the sentence “The quick brown fox jumps over the lazy dog.”, the tagger correctly labels “The” as a
+determiner (DT), “quick”, “brown”, and “lazy” as adjectives (JJ), “fox” and “dog” as singular nouns (NN),
+“jumps” as a present-tense verb (VBZ), and “over” as a preposition (IN) — together these tags describe
+the grammatical role that every single word plays in the sentence.
+Context-dependence is easy to see with the word “book”: in “Please book the flight.” it is tagged VB (verb),
+while in “I read a good book.” it is tagged NN (noun) — the tagger uses the surrounding words, not just
+the word itself, to decide which tag is correct.
+
+Algorithm
+1.Start.
+2.Import word_tokenize from nltk.tokenize and pos_tag from nltk.
+3.Download the averaged_perceptron_tagger resource.
+4.Take the input sentence and tokenize it into words.
+5.Apply nltk.pos_tag() on the list of tokenized words to obtain (word, tag) pairs.
+6.Print the list of POS-tagged words.
+7.Stop.
+
+
+Source Code
+import nltk
+from nltk.tokenize import word_tokenize
+nltk.download('averaged_perceptron_tagger', quiet=True)
+text = input("Enter a sentence: ")
+words = word_tokenize(text)
+pos_tags = nltk.pos_tag(words)
+print(pos_tags)
+
+
+Experiment 7: Write a Python program to show the most frequent words
+in a text using NLTK FreqDist.
+Objectives
+ To understand how to analyze the frequency of words appearing in a text.
+ To learn how to use NLTK's FreqDist class to find the most common words.
+Theory
+Word frequency analysis is the process of counting how many times each distinct word (or token) occurs
+within a given piece of text. It is a simple but powerful technique for identifying important, dominant, or
+recurring terms in a document, and it forms the basis of many other tasks in NLP and information retrieval,
+such as building word clouds, computing TF-IDF scores for search engines, or constructing simple bag-of-
+words feature vectors for text classification models.
+NLTK provides the FreqDist class specifically for this purpose. Conceptually, a FreqDist behaves like a
+Python dictionary in which each key is a unique token from the input and the corresponding value is the
+number of times that token appeared, but it adds several convenience methods on top of a plain
+dictionary. It is constructed by simply passing a list of tokens (typically produced by word_tokenize()) to
+FreqDist(). One of the most useful of these convenience methods is most_common(n), which returns a
+list of the n tokens with the highest frequency counts, sorted in descending order, as (token, count) tuples.
+This makes it trivial to answer questions like “what are the five most frequently used words in this
+document?” without manually sorting a dictionary by its values.
+For example, in the short text “NLP is fun. NLP is interesting. NLP helps in many applications.”, the word
+“NLP” appears three times, while “is” and the period “.” each appear twice, and the remaining words
+appear only once. Calling most_common(5) on the resulting FreqDist therefore returns [('NLP', 3), ('.', 2),
+('is', 2), ('fun', 1), ('interesting', 1)], correctly reflecting how often each of these tokens occurs in the text.
+In practice, FreqDist is almost always combined with stopword removal first — otherwise, words like “the”
+and “is” tend to dominate the most_common() list for any large document, hiding the actually
+informative, content-bearing words underneath them.
+
+Algorithm
+1.Start.
+2.Import word_tokenize from nltk.tokenize and FreqDist from nltk.probability.
+3.Take the input text and tokenize it into words.
+4.Construct a FreqDist object from the list of tokenized words.
+5.Call most_common(5) on the FreqDist object to get the five most frequent tokens.
+6.Print the result.
+7.Stop.
+
+
+Source Code
+import nltk
+from nltk.tokenize import word_tokenize
+from nltk.probability import FreqDist
+nltk.download('punkt', quiet=True)
+text = input("Enter text: ")
+words = word_tokenize(text)
+fdist = FreqDist(words)
+print(fdist.most_common(5))
+
+
+Experiment 8: Write a Python program to generate bigrams (2-word
+sequences) from a text using NLTK.
+Objectives
+ To understand the concept of n-grams, particularly bigrams, in NLP.
+ To learn how to generate bigrams from a piece of text using NLTK.
+Theory
+An n-gram is a contiguous sequence of n items — usually words, but sometimes characters — extracted
+from a given piece of text. When n = 1 these are called unigrams (single words), when n = 2 they are called
+bigrams (word pairs), and when n = 3 they are called trigrams (word triples), and so on for larger values
+of n. This lab focuses specifically on bigrams: consecutive pairs of tokens taken from the text.
+Bigrams capture simple, local word-pair relationships that a bag-of-words representation (which only
+counts individual word frequencies) would otherwise lose. For example, knowing that the words “brown”
+and “fox” frequently occur next to each other as the pair (“brown”, “fox”) tells us something about word
+order and local context that counting “brown” and “fox” separately does not. This makes bigrams (and n-
+grams in general) useful for tasks such as statistical language modeling, next-word prediction (as used in
+keyboard autocomplete), and collocation extraction (finding words that habitually co-occur, like “strong
+coffee” versus “powerful coffee”).
+NLTK's ngrams() function, found in the nltk.util module, generates these sequences automatically. It takes
+a list of tokens and an integer n, and returns an iterator (which is typically converted into a list) of tuples,
+where each tuple contains n consecutive tokens taken by sliding a window of size n one step at a time
+across the token list.
+Applying ngrams(words, 2) to the tokenized sentence “The quick brown fox jumps over the lazy dog.”
+slides a two-word window across the sentence one token at a time, producing consecutive pairs such as
+('The', 'quick'), ('quick', 'brown'), ('brown', 'fox'), and so on, all the way through to ('dog', '.') — together
+these bigrams capture every pair of adjacent tokens in the original sentence.
+The same function generalizes directly to other values of n: passing ngrams(words, 3) on the same
+sentence would instead produce trigrams such as ('The', 'quick', 'brown') and ('quick', 'brown', 'fox'), which
+is useful when a task needs slightly longer local context than a simple word pair provides.
+
+
+Algorithm
+1.Start.
+2.Import ngrams from nltk.util and word_tokenize from nltk.tokenize.
+3.Take the input text and tokenize it into words.
+4.Call ngrams(words, 2) to generate all bigrams from the tokenized words.
+5.Convert the result into a list using list().
+6.Print the list of bigrams.
+7.Stop.
+
+Source Code
+import nltk
+from nltk.util import ngrams
+from nltk.tokenize import word_tokenize
+nltk.download('punkt', quiet=True)
+text = input("Enter a sentence: ")
+words = word_tokenize(text)
+bigrams_list = list(ngrams(words, 2))
+print(bigrams_list)
+
+
+Experiment 9: Write a Python program to perform sentiment analysis
+(Positive/Negative/Neutral) using NLTK’s VADER.
+Objectives
+ To understand the concept of sentiment analysis in NLP.
+ To learn how to classify text as Positive, Negative, or Neutral using NLTK's VADER tool.
+Theory
+Sentiment analysis, also called opinion mining, is the task of automatically determining the emotional
+tone or attitude expressed within a piece of text, most commonly classified into three broad categories:
+positive, negative, or neutral. It is widely used in practice to analyze product reviews, social media posts,
+and customer feedback at scale, without requiring a human to manually read every single piece of text.
+VADER (Valence Aware Dictionary and sEntiment Reasoner), included with NLTK, is a lexicon-and-rule-
+based sentiment analysis tool. Unlike machine-learning models that need to be trained on labeled data,
+VADER works from a pre-built dictionary (lexicon) that assigns a sentiment intensity score to thousands
+of common words, and then applies a set of grammatical and syntactical rules on top — for instance, it
+understands that capitalization (“AMAZING” vs. “amazing”), punctuation (“good!!!” vs. “good”), degree
+modifiers (“very good” vs. “good”), and negation (“not good”) all intensify or flip the sentiment of a
+sentence. It was specifically designed and tuned for short, informal text such as social media posts, which
+makes it fast and effective without needing any model training.
+The SentimentIntensityAnalyzer.polarity_scores() method returns a dictionary with four values: 'neg',
+'neu', and 'pos', which represent the proportion of the text that falls into the negative, neutral, and
+positive categories respectively (and always sum to roughly 1), and 'compound', a single normalized score
+between -1 (most negative) and +1 (most positive) that summarizes the overall sentiment of the text in
+one number. By convention, a compound score >= 0.05 is treated as Positive, a score <= -0.05 is treated
+as Negative, and anything in between is treated as Neutral.
+For the sentence “I love this NLP course. It is amazing and very useful!”, VADER recognizes strongly
+positive words like “love”, “amazing”, and “useful”, along with the intensifier “very” and the exclamation
+mark, producing scores of {'neg': 0.0, 'neu': 0.318, 'pos': 0.682, 'compound': 0.7845}. Since the compound
+score (0.7845) is well above the 0.05 threshold, the overall sentiment is correctly classified as Positive.
+By contrast, negation flips the outcome: “This course is not good.” yields a negative compound score even
+though the word “good” on its own is positive, because VADER's rule set detects the preceding “not” and
+reduces or reverses the sentiment contribution of the word that follows it.
+
+Algorithm
+1.Start.
+2.Import SentimentIntensityAnalyzer from nltk.sentiment.
+3.Download the vader_lexicon resource.
+4.Create an object of SentimentIntensityAnalyzer.
+5.Take the input text and compute polarity_scores() on it.
+6.Extract the compound score from the result.
+7.If compound >= 0.05, classify as Positive; else if compound <= -0.05, classify as Negative;
+otherwise classify as Neutral.
+8.Print the scores and the overall sentiment.
+9.Stop.
+
+Source Code
+import nltk
+from nltk.sentiment import SentimentIntensityAnalyzer
+nltk.download('vader_lexicon', quiet=True)
+sia = SentimentIntensityAnalyzer()
+text = input("Enter text: ")
+scores = sia.polarity_scores(text)
+compound = scores['compound']
+if compound >= 0.05:
+sentiment = "Positive"
+elif compound <= -0.05:
+sentiment = "Negative"
+else:
+sentiment = "Neutral"
+print("Scores:", scores)
+print("Overall Sentiment:", sentiment)
+
+Experiment 10: Write a Python program to perform basic Named Entity
+Recognition (NER) and chunking using NLTK.
+Objectives
+ To understand the concept of Named Entity Recognition (NER) and chunking.
+ To learn how to identify entities such as persons, locations, and organizations in a sentence
+using NLTK.
+Theory
+Named Entity Recognition (NER) is the task of automatically locating spans of text that refer to specific,
+named “entities” and classifying each one into a predefined category. Common categories include
+PERSON (names of people, e.g., “Barack Obama”), ORGANIZATION (companies or institutions, e.g.,
+“Microsoft”), and GPE, short for Geo-Political Entity (countries, cities, or states, e.g., “Hawaii”). NER is a
+key building block for information extraction systems, question answering, and knowledge-graph
+construction, since it turns unstructured free text into structured facts about who, where, and what
+organizations are being discussed.
+NER is closely related to a technique called chunking, which groups sequences of adjacent tokens into a
+single labeled unit rather than treating them individually. This is important because named entities are
+often made up of more than one word (for example, “Barack” and “Obama” together refer to a single
+PERSON entity, not two separate ones), so chunking is what allows multi-word entities to be recognized
+as one coherent unit.
+In NLTK's pipeline, NER is built on top of POS tagging: text is first tokenized, then each token is POS-tagged
+(since, for example, proper nouns tagged NNP are the primary candidates for named entities), and finally
+NLTK's ne_chunk() function is applied to the list of POS-tagged tokens. ne_chunk() uses a pre-trained
+classifier (the maxent_ne_chunker) to group and label sequences of tokens, returning the result as a tree
+structure: recognized entities appear as labeled subtrees (e.g., a (PERSON ...) or (GPE ...) subtree), while
+ordinary words that are not part of any entity remain as plain leaves directly under the root of the tree.
+For the sentence “Barack Obama was born in Hawaii and worked at Microsoft.”, the pipeline correctly
+groups “Barack” and “Obama” together under a PERSON label, tags “Hawaii” as a GPE, and tags
+“Microsoft” as an ORGANIZATION, while ordinary words such as “was”, “born”, “in”, and “and” remain as
+plain, unlabeled leaves in the resulting parse tree, exactly as shown in the output below.
+As a further example, the sentence “Elon Musk founded SpaceX in California.” would similarly group
+“Elon” and “Musk” under PERSON, “SpaceX” under ORGANIZATION, and “California” under GPE —
+illustrating that ne_chunk() generalizes to any sentence whose proper nouns follow similar surface
+patterns, rather than working only for the one example sentence it was trained to recognise.
+
+Algorithm
+1.Start.
+2.Import word_tokenize, pos_tag, and ne_chunk from NLTK.
+3.Download the maxent_ne_chunker and words resources.
+4.Take the input text and tokenize it into words.
+5.Apply pos_tag() to obtain POS tags for the tokenized words.
+6.Apply ne_chunk() on the POS-tagged words to obtain a chunked tree with named entities
+labeled.
+7.Print the resulting tree.
+8.Stop.
+
+Source Code
+import nltk
+from nltk.tokenize import word_tokenize
+from nltk import pos_tag, ne_chunk
+nltk.download('maxent_ne_chunker', quiet=True)
+nltk.download('words', quiet=True)
+text = input("Enter a sentence: ")
+words = word_tokenize(text)
+pos_tags = pos_tag(words)
+ner_tree = ne_chunk(pos_tags)
+print(ner_tree)
