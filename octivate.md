@@ -1,10 +1,87 @@
-We'll go **one lab at a time**. For each lab, I'll give you:
-
-1. **Lab Title**
-2. **Theory** — concept, equations, and a small example
-3. **Python Code** — simple and suitable for a lab exam
-4. **Sample Input/Output**
-5. **Key points to remember for the exam**
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+<modelVersion>4.0.0</modelVersion>
+<parent>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-starter-parent</artifactId>
+<version>3.4.2</version>
+<relativePath/>
+<!--  lookup parent from repository  -->
+</parent>
+<groupId>com.mursalin</groupId>
+<artifactId>ai-mail-reply</artifactId>
+<version>0.0.1-SNAPSHOT</version>
+<name>ai-mail-reply</name>
+<description>Demo project for Spring ai</description>
+<url/>
+<licenses>
+<license/>
+</licenses>
+<developers>
+<developer/>
+</developers>
+<scm>
+<connection/>
+<developerConnection/>
+<tag/>
+<url/>
+</scm>
+<properties>
+<java.version>21</java.version>
+</properties>
+<dependencies>
+<dependency>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-starter-web</artifactId>
+</dependency>
+<dependency>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-starter-webflux</artifactId>
+</dependency>
+<dependency>
+<groupId>org.projectlombok</groupId>
+<artifactId>lombok</artifactId>
+<optional>true</optional>
+</dependency>
+<dependency>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-starter-test</artifactId>
+<scope>test</scope>
+</dependency>
+<dependency>
+<groupId>io.projectreactor</groupId>
+<artifactId>reactor-test</artifactId>
+<scope>test</scope>
+</dependency>
+</dependencies>
+<build>
+<plugins>
+<plugin>
+<groupId>org.apache.maven.plugins</groupId>
+<artifactId>maven-compiler-plugin</artifactId>
+<configuration>
+<annotationProcessorPaths>
+<path>
+<groupId>org.projectlombok</groupId>
+<artifactId>lombok</artifactId>
+</path>
+</annotationProcessorPaths>
+</configuration>
+</plugin>
+<plugin>
+<groupId>org.springframework.boot</groupId>
+<artifactId>spring-boot-maven-plugin</artifactId>
+<configuration>
+<excludes>
+<exclude>
+<groupId>org.projectlombok</groupId>
+<artifactId>lombok</artifactId>
+</exclude>
+</excludes>
+</configuration>
+</plugin>
+</plugins>
+</build>
+</project>
 
 ## Lab 1 — Caesar Cipher
 
